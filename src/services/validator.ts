@@ -1,50 +1,33 @@
-import type { Order, Stock, Customer } from "../types";
+import type { SubOrder, Warehouse, Customer } from "../types";
+import { getStock } from "./allocation";
+import { getPrice } from "./allocation";
 
-export function validateManualAllocation({
-  orders,
-  stocks = [],
-  customers = [],
-  manualAlloc,
-}: {
-  orders: Order[];
-  stocks?: Stock[];
-  customers?: Customer[];
-  manualAlloc: Record<string, number>;
-}) {
-  const stockMap = new Map<string, number>();
-  const creditMap = new Map<string, number>();
+export interface ValidationResult {
+  ok: boolean;
+  error?: string;
+}
 
-  stocks.forEach((s) => {
-    stockMap.set(
-      `${s.itemId}-${s.warehouseId}-${s.supplierId}`,
-      s.availableQty
-    );
-  });
-
-  customers.forEach((c) => {
-    creditMap.set(c.customerId, c.creditLimit);
-  });
-
-  for (const o of orders) {
-    const val = manualAlloc[o.subOrderId];
-    if (val === undefined) continue;
-
-    const credit = creditMap.get(o.customerId) || 0;
-
-    if (val > credit) {
-      return { valid: false, message: "Credit exceeded" };
-    }
-
-    const key = `${o.itemId}-${o.warehouseId}-${o.supplierId}`;
-    const stock = stockMap.get(key) || 0;
-
-    if (val > stock) {
-      return { valid: false, message: "Stock not enough" };
-    }
-
-    stockMap.set(key, stock - val);
-    creditMap.set(o.customerId, credit - val);
+export function validateManualAlloc(
+  order:      SubOrder,
+  newQty:     number,
+  warehouses: Warehouse[],
+  customer:   Customer,
+): ValidationResult {
+  if (isNaN(newQty) || newQty < 0) {
+    return { ok: false, error: "Invalid value" };
   }
 
-  return { valid: true };
+  const stock       = getStock(order.warehouseId, warehouses);
+  const price       = getPrice(order.itemId, order.supplierId, order.type);
+  const creditLeft  = customer.creditLimit - customer.usedCredit + order.allocated * price;
+  const stockAvail  = stock + order.allocated;
+
+  if (newQty > stockAvail) {
+    return { ok: false, error: `Stock insufficient (avail: ${stockAvail.toFixed(2)} kg)` };
+  }
+  if (newQty * price > creditLeft) {
+    return { ok: false, error: `Over credit (฿${creditLeft.toFixed(2)} remaining)` };
+  }
+
+  return { ok: true };
 }

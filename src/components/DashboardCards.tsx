@@ -1,83 +1,59 @@
-import { formatNumber } from "../utils/format";
+import type { DashboardSummary } from "../services/summary";
+import type { Warehouse } from "../types";
+import { fmtQty, fmtPct } from "../utils/format";
+import { WAREHOUSES_INIT } from "../data/mockData";
 
-type Props = {
-  summary: any;
-};
-
-export default function DashboardCards({ summary }: Props) {
-  const percent =
-    summary.totalRequest === 0
-      ? 0
-      : Math.round(
-          (summary.totalAllocated / summary.totalRequest) * 100
-        );
-
-  return (
-    <div className="space-y-6 mb-6">
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card
-          title="Total Request"
-          value={formatNumber(summary.totalRequest)}
-          color="blue"
-        />
-        <Card
-          title="Allocated"
-          value={formatNumber(summary.totalAllocated)}
-          color="green"
-        />
-        <Card
-          title="Remaining"
-          value={formatNumber(summary.remaining)}
-          color="yellow"
-        />
-        <Card
-          title="Incomplete"
-          value={formatNumber(summary.incomplete)}
-          color="red"
-        />
-      </div>
-
-      {/* PROGRESS BAR */}
-      <div className="bg-white rounded-xl shadow p-4">
-        <div className="flex justify-between mb-2 text-sm font-medium">
-          <span>Allocation Progress</span>
-          <span>{percent}%</span>
-        </div>
-
-        <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
-          <div
-            className="bg-green-500 h-3 transition-all duration-500"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
+interface Props {
+  summary:    DashboardSummary;
+  warehouses: Warehouse[];
+  shownCount: number;
 }
 
-function Card({
-  title,
-  value,
-  color,
-}: {
-  title: string;
-  value: string;
-  color: "blue" | "green" | "yellow" | "red";
-}) {
-  const colorMap = {
-    blue: "from-blue-500 to-blue-400",
-    green: "from-green-500 to-green-400",
-    yellow: "from-yellow-400 to-yellow-300 text-black",
-    red: "from-red-500 to-red-400",
-  };
+const Card = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
+  <div className="rounded-lg p-4" style={{ background: "#0d1520", border: "1px solid #152236" }}>
+    <div className="text-xs tracking-widest mb-1" style={{ color: "#3a5068" }}>{label}</div>
+    <div className="text-xl font-bold text-white">{value}</div>
+    {sub && <div className="text-xs mt-0.5" style={{ color: "#1e3348" }}>{sub}</div>}
+  </div>
+);
+
+export default function DashboardCards({ summary, warehouses, shownCount }: Props) {
+  const { totalOrders, fillRate, totalAllocated, totalRequested, fullyFilled, totalStock } = summary;
 
   return (
-    <div
-      className={`bg-gradient-to-r ${colorMap[color]} text-white p-4 rounded-xl shadow hover:scale-[1.02] transition`}
-    >
-      <div className="text-sm opacity-80">{title}</div>
-      <div className="text-2xl font-bold">{value}</div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card label="TOTAL ORDERS"    value={String(totalOrders)}                   sub={`${shownCount} shown`} />
+        <Card label="FILL RATE"       value={fmtPct(fillRate)}                      sub={`${fullyFilled} fully filled`} />
+        <Card label="ALLOCATED"       value={`${fmtQty(totalAllocated)} kg`}        sub={`of ${fmtQty(totalRequested)} kg requested`} />
+        <Card label="REMAINING STOCK" value={`${fmtQty(totalStock)} kg`}            sub="across all warehouses" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {warehouses.map(wh => {
+          const orig = WAREHOUSES_INIT.find(w => w.id === wh.id);
+          const pct  = orig && orig.stock > 0 ? (wh.stock / orig.stock) * 100 : 0;
+          const bar  = pct > 50 ? "#00e5a0" : pct > 20 ? "#fbbf24" : "#f87171";
+          return (
+            <div key={wh.id} className="rounded-lg p-3" style={{ background: "#0d1520", border: "1px solid #152236" }}>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="font-bold" style={{ color: "#00e5a0" }}>{wh.id}</span>
+                <span className="font-mono text-white">
+                  {fmtQty(wh.stock)}
+                  <span style={{ color: "#2d4a62" }}>/{orig?.stock} kg</span>
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#152236" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(pct, 100)}%`, background: bar }}
+                />
+              </div>
+              <div className="text-xs mt-1" style={{ color: "#1e3348" }}>{wh.name}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

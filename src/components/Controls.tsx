@@ -1,53 +1,59 @@
-type Props = {
-  search: string;
-  setSearch: (v: string) => void;
-  typeFilter: string;
-  setTypeFilter: (v: string) => void;
-  onReset: () => void;
-  onExport: () => void;
-};
+import type { TypeFilter, StatusFilter } from "../types";
 
-export default function Controls({
-  search,
-  setSearch,
-  typeFilter,
-  setTypeFilter,
-  onReset,
-  onExport,
-}: Props) {
+interface Props {
+  search:        string;
+  typeFilter:    TypeFilter;
+  statusFilter:  StatusFilter;
+  onSearch:      (v: string) => void;
+  onTypeFilter:  (v: TypeFilter) => void;
+  onStatusFilter:(v: StatusFilter) => void;
+}
+
+const btn = (active: boolean, color: string) => ({
+  border:     `1px solid ${active ? color : "#152236"}`,
+  background: active ? `${color}18` : "#0d1520",
+  color:      active ? color : "#3a5068",
+  borderRadius: 6,
+  padding:    "6px 11px",
+  fontSize:   10,
+  fontWeight: 700,
+  cursor:     "pointer",
+  letterSpacing: "0.05em",
+  transition: "all .15s",
+} as React.CSSProperties);
+
+const TYPES:   TypeFilter[]   = ["ALL", "EMERGENCY", "OVERDUE", "DAILY"];
+const STATUSES: StatusFilter[] = ["ALL", "FULL", "PARTIAL", "PENDING"];
+
+export default function Controls({ search, typeFilter, statusFilter, onSearch, onTypeFilter, onStatusFilter }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-3 mb-4">
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="🔍 Search order..."
-        className="border px-3 py-2 rounded-lg w-72 shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"
-      />
+    <div className="flex flex-wrap gap-2 items-center">
+      <div className="relative flex-1 min-w-48">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: "#3a5068" }}>🔍</span>
+        <input
+          type="text"
+          placeholder="Search order / customer ID…"
+          value={search}
+          onChange={e => onSearch(e.target.value)}
+          style={{
+            width: "100%", paddingLeft: 30, paddingRight: 12, paddingTop: 7, paddingBottom: 7,
+            background: "#0d1520", border: "1px solid #152236", borderRadius: 6,
+            color: "white", fontSize: 11, outline: "none", boxSizing: "border-box",
+          }}
+        />
+      </div>
 
-      <select
-        value={typeFilter}
-        onChange={(e) => setTypeFilter(e.target.value)}
-        className="border px-3 py-2 rounded-lg"
-      >
-        <option value="ALL">All</option>
-        <option value="EMERGENCY">Emergency</option>
-        <option value="OVERDUE">Overdue</option>
-        <option value="DAILY">Daily</option>
-      </select>
+      <div className="flex gap-1 flex-wrap">
+        {TYPES.map(t => (
+          <button key={t} onClick={() => onTypeFilter(t)} style={btn(typeFilter === t, "#00e5a0")}>{t}</button>
+        ))}
+      </div>
 
-      <button
-        onClick={onReset}
-        className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-      >
-        Reset
-      </button>
-
-      <button
-        onClick={onExport}
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-      >
-        Export CSV
-      </button>
+      <div className="flex gap-1 flex-wrap">
+        {STATUSES.map(s => (
+          <button key={s} onClick={() => onStatusFilter(s)} style={btn(statusFilter === s, "#60a5fa")}>{s}</button>
+        ))}
+      </div>
     </div>
   );
 }
