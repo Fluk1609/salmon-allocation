@@ -190,18 +190,25 @@ export function autoAllocate(orders: SubOrder[]): AutoAllocResult {
 
     } else {
 
+      let reason = "";
+
+      if (stock === 0) {
+        reason = `No stock in ${ord.warehouseId}`;
+      } else if (maxCreditQty === 0) {
+        reason = "Customer credit limit reached";
+      } else if (stock < ord.requestQty) {
+        reason = "Partially allocated due to limited stock";
+      } else {
+        reason = "Allocation blocked by constraints";
+      }
+
       logs.push({
         ok: false,
         subOrderId: ord.subOrderId,
         allocatedQty: 0,
         price,
         type: ord.type,
-        reason:
-          stock === 0
-            ? "No stock"
-            : maxCreditQty === 0
-            ? "Credit limit reached"
-            : "Insufficient stock/credit"
+        reason
       });
 
     }

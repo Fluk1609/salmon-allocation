@@ -8,6 +8,7 @@ import { bankersRound, fmtQty } from "./utils/format";
 import { useDebounce } from "./hook/useDebounce";
 import DashboardCards from "./components/DashboardCards";
 import Controls from "./components/Controls";
+import * as XLSX from "xlsx";
 import OrderTable from "./components/OrderTable";
 
 export default function App() {
@@ -37,6 +38,26 @@ export default function App() {
       setLogs(result.logs);
       setRunning(false);
     }, 50);
+  }
+
+  function handleExport() {
+    const data = filtered.map(o => ({
+      Order: o.orderId,
+      SubOrder: o.subOrderId,
+      Customer: o.customerId,
+      Item: o.itemId,
+      Warehouse: o.warehouseId,
+      Type: o.type,
+      Requested: o.requestQty,
+      Allocated: o.allocated,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, ws, "Orders");
+
+    XLSX.writeFile(wb, "orders.xlsx");
   }
 
   const customerMap = useMemo(() => {
@@ -132,13 +153,23 @@ export default function App() {
 
         <DashboardCards summary={summary} warehouses={warehouses} shownCount={filtered.length} />
 
+        {running && (
+          <div style={{
+            padding: 10,
+            fontSize: 12,
+            color: "#00e5a0"
+          }}>
+            ⚡ Allocating orders...
+          </div>
+        )}
+
         {showLog && (
           <div className="rounded-lg p-4 overflow-y-auto" style={{ background: "#0d1520", border: "1px solid #152236", maxHeight: 180 }}>
             <div style={{ fontSize: 10, letterSpacing: "0.1em", marginBottom: 8, color: "#3a5068" }}>ALLOCATION LOG</div>
             {logs.map((e, i) => (
               <div key={i} style={{ fontSize: 11, color: e.ok ? "#00e5a0" : "#f87171", padding: "1px 0" }}>
                 {e.ok ? "✓" : "✗"} {e.subOrderId} → {fmtQty(e.allocatedQty)} kg
-                {!e.ok && e.reason ? ` (${e.reason})` : ""}
+                {!e.ok && e.reason ? ` | ${e.reason}` : ""}
               </div>
             ))}
           </div>
@@ -152,65 +183,100 @@ export default function App() {
           onTypeFilter={v => { setTypeFilter(v); }}
           onStatusFilter={v => { setStatFilter(v); }}
         />
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 8 }}>
 
-          <button
-            onClick={() => setSortBy("date")}
-            style={{
-              color: sortBy === "date" ? "#00e5a0" : "#3a5068",
-              background: sortBy === "date" ? "#00281d" : "transparent",
-              border: "1px solid #152236",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer"
-            }}
-          >
-            Date
-          </button>
+            <button
+              onClick={() => setSortBy("date")}
+              style={{
+                color: sortBy === "date" ? "#00e5a0" : "#3a5068",
+                background: sortBy === "date" ? "#00281d" : "transparent",
+                border: "1px solid #152236",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer"
+              }}
+            >
+              Date
+            </button>
 
-          <button
-            onClick={() => setSortBy("qty")}
-            style={{
-              color: sortBy === "qty" ? "#00e5a0" : "#3a5068",
-              background: sortBy === "qty" ? "#00281d" : "transparent",
-              border: "1px solid #152236",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer"
-            }}
-          >
-            Qty
-          </button>
+            <button
+              onClick={() => setSortBy("qty")}
+              style={{
+                color: sortBy === "qty" ? "#00e5a0" : "#3a5068",
+                background: sortBy === "qty" ? "#00281d" : "transparent",
+                border: "1px solid #152236",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer"
+              }}
+            >
+              Qty
+            </button>
 
-          <button
-            onClick={() => setSortBy("allocated")}
-            style={{
-              color: sortBy === "allocated" ? "#00e5a0" : "#3a5068",
-              background: sortBy === "allocated" ? "#00281d" : "transparent",
-              border: "1px solid #152236",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer"
-            }}
-          >
-            Allocated
-          </button>
+            <button
+              onClick={() => setSortBy("allocated")}
+              style={{
+                color: sortBy === "allocated" ? "#00e5a0" : "#3a5068",
+                background: sortBy === "allocated" ? "#00281d" : "transparent",
+                border: "1px solid #152236",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer"
+              }}
+            >
+              Allocated
+            </button>
 
-          <button
-            onClick={() =>
-              setSortDir(d => (d === "asc" ? "desc" : "asc"))
-            }
-            style={{
-              border: "1px solid #152236",
-              borderRadius: 6,
-              padding: "4px 10px",
-              cursor: "pointer",
-              color: "#60a5fa"
-            }}
-          >
-            {sortDir === "asc" ? "⬆️" : "⬇️"}
-          </button>
+            <button
+              onClick={() =>
+                setSortDir(d => (d === "asc" ? "desc" : "asc"))
+              }
+              style={{
+                border: "1px solid #152236",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer",
+                color: "#60a5fa"
+              }}
+            >
+              {sortDir === "asc" ? "⬆️" : "⬇️"}
+            </button>
 
+          </div>
+          <div style={{ marginTop: 8, display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => {
+                setSearch("");
+                setTypeFilter("ALL");
+                setStatFilter("ALL");
+              }}
+              style={{
+                border: "1px solid #152236",
+                background: "transparent",
+                color: "#f87171",
+                borderRadius: 6,
+                padding: "4px 10px",
+                fontSize: 11,
+                cursor: "pointer"
+              }}
+            >
+              Reset Filters
+            </button>
+
+            <button onClick={handleExport}
+              style={{
+                border: "1px solid #152236",
+                background: "transparent",
+                color: "#FFF",
+                borderRadius: 6,
+                padding: "4px 10px",
+                fontSize: 11,
+                cursor: "pointer"
+              }}>
+              Export Excel
+            </button>
+          </div>
         </div>
 
         <OrderTable

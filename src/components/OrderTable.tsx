@@ -166,12 +166,31 @@ export default function OrderTable({
                   key={ord.subOrderId}
                   style={{
                     borderBottom: "1px solid #0d1a27",
-                    background:
-                      flashId === ord.subOrderId
-                        ? "rgba(0,229,160,0.06)"
-                        : idx % 2 === 0
-                        ? "transparent"
-                        : "rgba(255,255,255,0.015)",
+
+                    background: (() => {
+                      const isFull  = ord.allocated >= ord.requestQty;
+                      const isPart  = ord.allocated > 0 && !isFull;
+                      const isZero  = ord.allocated === 0;
+
+                      if (flashId === ord.subOrderId) {
+                        return "rgba(0,229,160,0.06)";
+                      }
+
+                      if (isFull) {
+                        return "rgba(0,229,160,0.05)";   // 🟢 full
+                      }
+
+                      if (isPart) {
+                        return "rgba(251,191,36,0.05)";  // 🟡 partial
+                      }
+
+                      if (isZero) {
+                        return "rgba(248,113,113,0.05)"; // 🔴 pending
+                      }
+
+                      return "transparent";
+                    })(),
+
                     transition: "background .3s"
                   }}
                 >
