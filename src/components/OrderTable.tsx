@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SubOrder, Warehouse, Customer } from "../types";
 import { getPrice } from "../services/allocation";
 import { validateManualAlloc } from "../services/validator";
 import { fmtMoney, fmtQty } from "../utils/format";
-
 const PAGE_SIZE = 25;
 
 const TYPE_BADGE: Record<string, { bg: string; color: string; border: string }> = {
   EMERGENCY: { bg: "#2d0a0a", color: "#f87171", border: "#7f1d1d" },
-  OVERDUE:   { bg: "#2d1a00", color: "#fbbf24", border: "#78350f" },
-  DAILY:     { bg: "#002d26", color: "#34d399", border: "#065f46" },
+  OVERDUE: { bg: "#2d1a00", color: "#fbbf24", border: "#78350f" },
+  DAILY: { bg: "#002d26", color: "#34d399", border: "#065f46" },
 };
 
 interface Props {
@@ -18,7 +17,7 @@ interface Props {
   totalFiltered: number;
   onManualAlloc: (subOrderId: string, qty: number) => void;
   customerMap: Map<string, Customer>;
-  orderMap: Map<string, SubOrder>; // 🔥 เพิ่มเพื่อ optimize
+  orderMap: Map<string, SubOrder>;
 }
 
 const HEADERS = [
@@ -44,6 +43,9 @@ export default function OrderTable({
 }: Props) {
 
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [orders, totalFiltered]);
   const [inputVals, setInputVals] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [flashId, setFlashId] = useState<string | null>(null);
@@ -51,7 +53,6 @@ export default function OrderTable({
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
   const paginated = orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // 🔥 handle allocate (safe + optimized)
   const handleSet = (subOrderId: string) => {
     const raw = inputVals[subOrderId];
     const qty = parseFloat(raw);
@@ -75,7 +76,6 @@ export default function OrderTable({
 
     onManualAlloc(subOrderId, qty);
 
-    // clear input + error
     setInputVals(p => {
       const n = { ...p };
       delete n[subOrderId];
@@ -88,7 +88,6 @@ export default function OrderTable({
       return n;
     });
 
-    // flash effect
     setFlashId(subOrderId);
     setTimeout(() => setFlashId(null), 800);
   };
@@ -96,7 +95,10 @@ export default function OrderTable({
   return (
     <div
       className="rounded-lg overflow-hidden"
-      style={{ background: "#0d1520", border: "1px solid #152236" }}
+      style={{
+        background: "#0d1520",
+        border: "1px solid #152236"
+      }}
     >
       <div className="overflow-x-auto">
         <table
@@ -141,7 +143,7 @@ export default function OrderTable({
               </tr>
             )}
 
-            {paginated.map((ord, idx) => {
+            {paginated.map((ord) => {
               const price = getPrice(ord.itemId, ord.supplierId, ord.type);
 
               const fillPct =
@@ -154,7 +156,6 @@ export default function OrderTable({
 
               const tb = TYPE_BADGE[ord.type];
 
-              // 🔥 ใช้ Map แทน find
               const cust = customerMap.get(ord.customerId);
 
               const creditLeft = cust
@@ -168,24 +169,24 @@ export default function OrderTable({
                     borderBottom: "1px solid #0d1a27",
 
                     background: (() => {
-                      const isFull  = ord.allocated >= ord.requestQty;
-                      const isPart  = ord.allocated > 0 && !isFull;
-                      const isZero  = ord.allocated === 0;
+                      const isFull = ord.allocated >= ord.requestQty;
+                      const isPart = ord.allocated > 0 && !isFull;
+                      const isZero = ord.allocated === 0;
 
                       if (flashId === ord.subOrderId) {
                         return "rgba(0,229,160,0.06)";
                       }
 
                       if (isFull) {
-                        return "rgba(0,229,160,0.05)";   // 🟢 full
+                        return "rgba(0,229,160,0.05)";
                       }
 
                       if (isPart) {
-                        return "rgba(251,191,36,0.05)";  // 🟡 partial
+                        return "rgba(251,191,36,0.05)";
                       }
 
                       if (isZero) {
-                        return "rgba(248,113,113,0.05)"; // 🔴 pending
+                        return "rgba(248,113,113,0.05)";
                       }
 
                       return "transparent";
@@ -296,8 +297,8 @@ export default function OrderTable({
                           background: isFull
                             ? "#00e5a0"
                             : isPart
-                            ? "#fbbf24"
-                            : "#152236",
+                              ? "#fbbf24"
+                              : "#152236",
                           borderRadius: 3,
                           transition: "width .5s"
                         }}
