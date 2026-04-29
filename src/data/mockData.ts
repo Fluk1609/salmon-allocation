@@ -32,18 +32,26 @@ const SEED: Omit<SubOrder, "allocated">[] = [
   { orderId:"ORDER-0008", subOrderId:"ORDER-0008-001", itemId:"Item-1", warehouseId:"WH-002", supplierId:"SP-001", requestQty:35,  type:"OVERDUE",   createDate:"2025-02-20", customerId:"CT-0003", remark:"" },
 ];
 
-const TYPES:   Array<"DAILY"|"OVERDUE"|"EMERGENCY"> = ["DAILY","OVERDUE","EMERGENCY"];
-const ITEMS    = ["Item-1","Item-2"];
-const WHS      = ["WH-001","WH-002","WH-003","WH-000"];
-const SPS      = ["SP-001","SP-002","SP-000"];
-const CUSTS    = ["CT-0001","CT-0002","CT-0003"];
-const MONTHS   = ["01","02","03"];
-const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const TYPES = ["DAILY","OVERDUE","EMERGENCY"] as const;
+const ITEMS = ["Item-1","Item-2"];
+const WHS   = ["WH-001","WH-002","WH-003","WH-000"];
+const SPS   = ["SP-001","SP-002","SP-000"];
+const CUSTS = ["CT-0001","CT-0002","CT-0003"];
+
+let seed = 42;
+const rand = (min: number, max: number) => {
+  seed = (seed * 16807) % 2147483647;
+  return min + (seed % (max - min + 1));
+};
 
 export function generateOrders(extra = 5000): SubOrder[] {
+  seed = 42;
+
   const base: SubOrder[] = SEED.map(o => ({ ...o, allocated: 0 }));
+
   for (let i = SEED.length + 1; i <= SEED.length + extra; i++) {
-    const id = `ORDER-${String(i).padStart(4, "0")}`;
+    const id = `ORDER-${String(i).padStart(5, "0")}`;
+
     base.push({
       orderId:     id,
       subOrderId:  `${id}-001`,
@@ -51,12 +59,13 @@ export function generateOrders(extra = 5000): SubOrder[] {
       warehouseId: WHS[rand(0, WHS.length - 1)],
       supplierId:  SPS[rand(0, SPS.length - 1)],
       requestQty:  rand(5, 300),
-      type:        TYPES[rand(0, 2)],
-      createDate:  `2025-${MONTHS[rand(0, 2)]}-${String(rand(1, 28)).padStart(2, "0")}`,
-      customerId:  CUSTS[rand(0, 2)],
+      type:        TYPES[rand(0, TYPES.length - 1)],
+      createDate:  `2025-${String(rand(1, 12)).padStart(2, "0")}-${String(rand(1, 28)).padStart(2, "0")}`,
+      customerId:  CUSTS[rand(0, CUSTS.length - 1)],
       remark:      "",
       allocated:   0,
     });
   }
+
   return base;
 }

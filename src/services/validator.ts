@@ -1,5 +1,4 @@
 import type { SubOrder, Warehouse, Customer } from "../types";
-import { getStock } from "./allocation";
 import { getPrice } from "./allocation";
 
 export interface ValidationResult {
@@ -8,19 +7,26 @@ export interface ValidationResult {
 }
 
 export function validateManualAlloc(
-  order:      SubOrder,
-  newQty:     number,
+  order: SubOrder,
+  newQty: number,
   warehouses: Warehouse[],
-  customer:   Customer,
+  customer: Customer,
 ): ValidationResult {
   if (isNaN(newQty) || newQty < 0) {
     return { ok: false, error: "Invalid value" };
   }
 
-  const stock       = getStock(order.warehouseId, warehouses);
-  const price       = getPrice(order.itemId, order.supplierId, order.type);
-  const creditLeft  = customer.creditLimit - customer.usedCredit + order.allocated * price;
-  const stockAvail  = stock + order.allocated;
+  const price = getPrice(order.itemId, order.supplierId, order.type);
+  const creditLeft = customer.creditLimit - customer.usedCredit + order.allocated * price;
+  let stockAvail = 0;
+
+  if (order.warehouseId === "WH-000") {
+    const totalStock = warehouses.reduce((s, w) => s + w.stock, 0);
+    stockAvail = totalStock + order.allocated;
+  } else {
+    const wh = warehouses.find(w => w.id === order.warehouseId);
+    stockAvail = (wh?.stock ?? 0) + order.allocated;
+  }
 
   if (newQty > stockAvail) {
     return { ok: false, error: `Stock insufficient (avail: ${stockAvail.toFixed(2)} kg)` };

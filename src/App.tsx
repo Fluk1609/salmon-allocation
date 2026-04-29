@@ -31,12 +31,17 @@ export default function App() {
   function runAuto() {
     setRunning(true);
     setTimeout(() => {
-      const result = autoAllocate(orders);
-      setOrders(result.orders);
-      setWarehouses(result.warehouses);
-      setCustomers(result.customers);
-      setLogs(result.logs);
-      setRunning(false);
+      setOrders(prev => {
+        const result = autoAllocate(prev);
+
+        setWarehouses(result.warehouses);
+        setCustomers(result.customers);
+        setLogs(result.logs);
+
+        setRunning(false);
+
+        return result.orders;
+      });
     }, 50);
   }
 
@@ -78,7 +83,17 @@ export default function App() {
     const diff = qty - ord.allocated;
 
     setOrders(p => p.map(o => o.subOrderId === subOrderId ? { ...o, allocated: qty } : o));
-    setWarehouses(p => deductStock(ord.warehouseId, diff, p));
+    if (diff > 0) {
+      setWarehouses(p => deductStock(ord.warehouseId, diff, p));
+    } else if (diff < 0) {
+      setWarehouses(p =>
+        p.map(w =>
+          w.id === ord.warehouseId
+            ? { ...w, stock: w.stock + Math.abs(diff) }
+            : w
+        )
+      );
+    }
     setCustomers(p => p.map(c => c.id === ord.customerId
       ? { ...c, usedCredit: bankersRound(c.usedCredit + diff * price) }
       : c
@@ -123,16 +138,14 @@ export default function App() {
     return arr;
   }, [filtered, sortBy, sortDir]);
   const summary = useMemo(() => computeSummary(orders, warehouses, customers), [orders, warehouses, customers]);
-
   return (
     <div style={{ minHeight: "100vh", background: "#070d14", fontFamily: "'IBM Plex Mono','Courier New',monospace", color: "#c8d6e5" }}>
 
       <header style={{ background: "rgba(7,13,20,0.97)", borderBottom: "1px solid #152236", position: "sticky", top: 0, zIndex: 30, backdropFilter: "blur(8px)" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px", height: 52, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 20 }}>🐟</span>
             <div>
-              <div style={{ fontWeight: 700, color: "white", fontSize: 13, letterSpacing: "0.12em" }}>SALMON ALLOCATOR</div>
+              <div style={{ fontWeight: 700, color: "white", fontSize: 13, letterSpacing: "0.12em" }}>ALLOCATOR</div>
               <div style={{ fontSize: 10, color: "#2d4a62", letterSpacing: "0.08em" }}>Supply Chain · Allocation System</div>
             </div>
           </div>
