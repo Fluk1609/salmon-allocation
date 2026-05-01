@@ -1,9 +1,9 @@
 import type { Warehouse, Customer, PriceEntry, SubOrder } from "../types";
 
 export const WAREHOUSES_INIT: Warehouse[] = [
-  { id: "WH-001", name: "Bangkok Central", stock: 500 },
-  { id: "WH-002", name: "Chiang Mai Hub",  stock: 300 },
-  { id: "WH-003", name: "Phuket Port",     stock: 800 },
+  { id: "WH-001", name: "Bangkok Central", stock: 500, total: 500 },
+  { id: "WH-002", name: "Chiang Mai Hub",  stock: 300, total: 300 },
+  { id: "WH-003", name: "Phuket Port",     stock: 800, total: 800 },
 ];
 
 export const CUSTOMERS_INIT: Customer[] = [
