@@ -30,7 +30,6 @@ PRICES.forEach(p => {
 
 function getBestPrice(itemId: string, type: OrderType): number {
   const candidates = priceByItem.get(itemId) || [];
-
   if (candidates.length === 0) return 100;
 
   const best = Math.min(
@@ -99,7 +98,11 @@ export function deductStock(
 
   return warehouses.map(w =>
     w.id === warehouseId
-      ? { ...w, stock: Math.max(0, w.stock - qty) }
+      ? {
+        ...w,
+        stock: Math.max(0, w.stock - qty),
+        total: w.total
+      }
       : w
   );
 }
@@ -117,24 +120,18 @@ export function autoAllocate(
   customers: Customer[]
 ): AutoAllocResult {
 
-  // reset allocation
   const orders = inputOrders.map(o => ({
     ...o,
     allocated: 0
   }));
 
-  // clone state
   let whState = warehouses.map(w => ({ ...w }));
   const custMap = new Map(
     customers.map(c => [c.id, { ...c }])
   );
 
-  const logs: AllocationLog[] = [];
   const allocMap = new Map<string, number>();
 
-  // ======================
-  // SORT (Priority + FIFO)
-  // ======================
   const sorted = [...orders].sort((a, b) => {
     const t = TYPE_PRIORITY[a.type] - TYPE_PRIORITY[b.type];
     if (t !== 0) return t;
@@ -143,22 +140,14 @@ export function autoAllocate(
       - new Date(b.createDate).getTime();
   });
 
-  // ======================
-  // GROUP BY TYPE
-  // ======================
   const groups: Record<OrderType, SubOrder[]> = {
     EMERGENCY: [],
     OVERDUE: [],
     DAILY: []
   };
 
-  sorted.forEach(o => {
-    groups[o.type].push(o);
-  });
+  sorted.forEach(o => groups[o.type].push(o));
 
-  // ======================
-  // FAIR ALLOCATION (สำคัญ)
-  // ======================
   for (const type of ["EMERGENCY", "OVERDUE", "DAILY"] as OrderType[]) {
 
     const group = groups[type];
@@ -170,8 +159,6 @@ export function autoAllocate(
       for (const ord of group) {
 
         const currentAlloc = allocMap.get(ord.subOrderId) ?? 0;
-
-        // ถ้าเต็มแล้ว skip
         if (currentAlloc >= ord.requestQty) continue;
 
         const cust = custMap.get(ord.customerId);
@@ -187,9 +174,8 @@ export function autoAllocate(
 
         if (stock <= 0 || maxCreditQty <= 0) continue;
 
-        // 🔥 แบ่งทีละ chunk (fair)
         const step = Math.min(
-          10,
+          Math.ceil(ord.requestQty * 0.1),
           ord.requestQty - currentAlloc,
           stock,
           maxCreditQty
@@ -197,13 +183,10 @@ export function autoAllocate(
 
         if (step <= 0) continue;
 
-        // update allocation
         allocMap.set(ord.subOrderId, currentAlloc + step);
 
-        // 🔥 หัก stock จริง
         whState = deductStock(ord.warehouseId, step, whState);
 
-        // update credit
         cust.usedCredit = bankersRound(
           cust.usedCredit + step * price
         );
@@ -213,13 +196,47 @@ export function autoAllocate(
     }
   }
 
-  // ======================
-  // FINAL RESULT
-  // ======================
   const updatedOrders = orders.map(o => ({
     ...o,
     allocated: allocMap.get(o.subOrderId) ?? 0
   }));
+  const logs: AllocationLog[] = updatedOrders.map(o => {
+    const price = getPrice(o.itemId, o.supplierId, o.type);
+
+    const stock = getStock(o.warehouseId, whState);
+    const cust = custMap.get(o.customerId);
+
+    let reason = "";
+
+    if (o.allocated > 0) {
+      return {
+        ok: true,
+        subOrderId: o.subOrderId,
+        allocatedQty: o.allocated,
+        price,
+        type: o.type
+      };
+    }
+
+    if (stock === 0) {
+      reason = o.warehouseId === "WH-000"
+        ? "No stock (all warehouses)"
+        : `No stock (${o.warehouseId})`;
+    } else if (cust && cust.creditLimit - cust.usedCredit <= 0) {
+      reason = "Credit limit reached";
+    } else {
+      reason = "Insufficient allocation";
+    }
+
+    return {
+      ok: false,
+      subOrderId: o.subOrderId,
+      allocatedQty: 0,
+      price,
+      type: o.type,
+      reason
+    };
+  });
 
   return {
     orders: updatedOrders,

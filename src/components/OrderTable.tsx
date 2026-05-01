@@ -24,6 +24,7 @@ interface Props {
   warehouses: Warehouse[];
   totalFiltered: number;
   onManualAlloc: (subOrderId: string, qty: number) => void;
+  onManualLog: (log: any) => void;
   customerMap: Map<string, Customer>;
   orderMap: Map<string, SubOrder>;
 }
@@ -46,6 +47,7 @@ export default function OrderTable({
   warehouses,
   totalFiltered,
   onManualAlloc,
+  onManualLog,
   customerMap,
   orderMap,
 }: Props) {
@@ -74,6 +76,15 @@ export default function OrderTable({
     if (!result.ok) { setErrors(p => ({ ...p, [subOrderId]: result.error! })); return; }
 
     onManualAlloc(subOrderId, qty);
+    onManualLog({
+      ok: qty > 0,
+      subOrderId,
+      allocatedQty: qty,
+      price: getPrice(ord.itemId, ord.supplierId, ord.type),
+      type: ord.type,
+      reason: qty === 0 ? "Manual cleared" : "Manual input",
+      source: "MANUAL"
+    });
     setInputVals(p => { const n = { ...p }; delete n[subOrderId]; return n; });
     setErrors(p => { const n = { ...p }; delete n[subOrderId]; return n; });
     setFlashId(subOrderId);

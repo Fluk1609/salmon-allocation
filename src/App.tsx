@@ -158,7 +158,7 @@ export default function App() {
               style={{ border: "1px solid #e5e7eb", background: "transparent", color: "#3a5068", borderRadius: 6, padding: "6px 12px", fontSize: 11, cursor: "pointer" }}>
               📋 Log ({logs.length})
             </button>
-            <button onClick={runAuto} disabled={running}
+            <button onClick={runAuto} disabled={summary.totalStock === 0}
               style={{ background: running ? "#00281d" : "#00e5a0", color: running ? "#00e5a0" : "#07120e", borderRadius: 6, padding: "6px 16px", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", opacity: running ? 0.7 : 1, transition: "all .3s" }}>
               {running ? "⏳ Running…" : "⚡ Auto Allocate"}
             </button>
@@ -312,6 +312,7 @@ export default function App() {
           orderMap={orderMap}
           totalFiltered={sorted.length}
           onManualAlloc={handleManualAlloc}
+          onManualLog={(log) => setLogs(prev => [log, ...prev])}
         />
 
         {isMobile ? (

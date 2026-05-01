@@ -41,7 +41,6 @@ export async function autoAllocateApi(orders: any[]) {
 
   const data = await res.json();
 
-  // 🔥 map orders
   const mappedOrders = (data.orders || []).map((o: any) => ({
     orderId: o.OrderID,
     subOrderId: o.SubOrderID,
@@ -55,7 +54,6 @@ export async function autoAllocateApi(orders: any[]) {
     customerId: o.CustomerID
   }));
 
-  // 🔥 map customers (กัน undefined)
   const mappedCustomers = (data.customers || []).map((c: any) => ({
     id: c.ID,
     name: c.Name,
@@ -63,7 +61,6 @@ export async function autoAllocateApi(orders: any[]) {
     usedCredit: c.UsedCredit ?? 0
   }));
 
-  // 🔥 map warehouses (คุณยังไม่ได้ map!)
   const mappedWarehouses = (data.warehouses || []).map((w: any) => ({
     id: w.ID,
     name: w.Name,
