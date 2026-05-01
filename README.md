@@ -1,73 +1,122 @@
-# React + TypeScript + Vite
+# 🐟 Salmon Allocation System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A supply chain allocation interface that distributes limited stock across customer orders using priority rules and constraints.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Demo
 
-## React Compiler
+👉 https://salmon-allocation-rouge.vercel.app/
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📦 Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 🔹 Auto Allocation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+* Priority: **EMERGENCY > OVERDUE > DAILY**
+* FIFO within same type
+* Respects:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+  * Warehouse stock
+  * Customer credit limit
+* Supports:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+  * Partial allocation
+  * Multi-warehouse (WH-000)
+  * Multi-supplier (SP-000)
+
+---
+
+### 🔹 Manual Allocation
+
+* User can override allocation per order
+* Manual allocation:
+
+  * Updates stock & credit instantly
+  * Is preserved when running Auto Allocate
+  * Highlighted in UI
+
+---
+
+### 🔹 Dashboard
+
+* Total orders
+* Fill rate
+* Allocated vs requested
+* Remaining stock
+* Warehouse stock bars
+
+---
+
+### 🔹 Logs
+
+* Shows allocation result per order
+* Includes:
+
+  * Success / Fail
+  * Reason (No stock, Credit limit, etc.)
+  * Source: AUTO / MANUAL
+
+---
+
+## 🧠 Algorithm
+
+1. Sort orders by:
+
+   * Type priority (EMERGENCY → OVERDUE → DAILY)
+   * Creation date (FIFO)
+
+2. Apply manual allocations first:
+
+   * Deduct stock
+   * Deduct credit
+
+3. Run auto allocation:
+
+   * Skip manual orders
+   * Allocate based on:
+
+     * Available stock
+     * Remaining credit
+
+4. Ensure:
+
+   * No stock overflow
+   * No credit overflow
+
+---
+
+## 🛠 Tech Stack
+
+* React + TypeScript
+* Vite
+* Tailwind CSS
+
+---
+
+## ▶️ Run Locally
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 📌 Notes
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+* Auto Allocate is disabled when stock = 0
+* Manual allocation takes priority over auto
+* Banker’s rounding applied to pricing
+
+---
+
+## 💡 Improvements (Future)
+
+* Undo / redo manual changes
+* Allocation strategy switch
+* Backend integration
+* Performance optimization for large datasets
+
+---
