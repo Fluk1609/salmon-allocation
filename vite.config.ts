@@ -6,4 +6,7 @@ export default defineConfig({
   css: {
     postcss: './postcss.config.js',
   },
+  build: {
+    chunkSizeWarningLimit: 1000
+  }
 })
