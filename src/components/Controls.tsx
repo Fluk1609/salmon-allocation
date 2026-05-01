@@ -39,7 +39,7 @@ export default function Controls({ search, typeFilter, statusFilter, onSearch, o
           style={{
             width: "100%", paddingLeft: 30, paddingRight: 12, paddingTop: 7, paddingBottom: 7,
             background: "#FFF", border: "1px solid #e5e7eb", borderRadius: 6,
-            color: "white", fontSize: 11, outline: "none", boxSizing: "border-box",
+            color: "#3a5068", fontSize: 11, outline: "none", boxSizing: "border-box",
           }}
         />
       </div>
