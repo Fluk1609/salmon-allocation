@@ -10,8 +10,8 @@ interface Props {
 }
 
 const btn = (active: boolean, color: string) => ({
-  border:     `1px solid ${active ? color : "#152236"}`,
-  background: active ? `${color}18` : "#0d1520",
+  border:     `1px solid ${active ? color : "#e5e7eb"}`,
+  background: active ? `${color}20` : "#ffffff",
   color:      active ? color : "#3a5068",
   borderRadius: 6,
   padding:    "6px 11px",
@@ -20,6 +20,7 @@ const btn = (active: boolean, color: string) => ({
   cursor:     "pointer",
   letterSpacing: "0.05em",
   transition: "all .15s",
+  whiteSpace: "nowrap"
 } as React.CSSProperties);
 
 const TYPES:   TypeFilter[]   = ["ALL", "EMERGENCY", "OVERDUE", "DAILY"];
@@ -37,7 +38,7 @@ export default function Controls({ search, typeFilter, statusFilter, onSearch, o
           onChange={e => onSearch(e.target.value)}
           style={{
             width: "100%", paddingLeft: 30, paddingRight: 12, paddingTop: 7, paddingBottom: 7,
-            background: "#0d1520", border: "1px solid #152236", borderRadius: 6,
+            background: "#FFF", border: "1px solid #e5e7eb", borderRadius: 6,
             color: "white", fontSize: 11, outline: "none", boxSizing: "border-box",
           }}
         />
