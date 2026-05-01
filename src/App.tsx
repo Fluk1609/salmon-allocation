@@ -11,6 +11,7 @@ import Controls from "./components/Controls";
 import * as XLSX from "xlsx";
 import OrderTable from "./components/OrderTable";
 import { useIsMobile } from "./hook/useIsMobile";
+import { initData } from "./services/init";
 
 export default function App() {
   const isMobile = useIsMobile();
@@ -28,25 +29,26 @@ export default function App() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const debouncedSearch = useDebounce(search, 250);
 
-  useEffect(() => { runAuto(); }, []);
+  useEffect(() => {
+    const init = initData();
+    setWarehouses(init.warehouses);
+    setCustomers(init.customers);
+  }, []);
 
   function runAuto() {
     setRunning(true);
+
     setTimeout(() => {
-      setOrders(prev => {
-        const result = autoAllocate(prev);
+      const result = autoAllocate(orders, warehouses, customers);
 
-        setWarehouses(result.warehouses);
-        setCustomers(result.customers);
-        setLogs(result.logs);
+      setOrders(result.orders);
+      setWarehouses(result.warehouses);
+      setCustomers(result.customers);
+      setLogs(result.logs);
 
-        setRunning(false);
-
-        return result.orders;
-      });
+      setRunning(false);
     }, 50);
   }
-
   function handleExport() {
     const data = filtered.map(o => ({
       Order: o.orderId,
@@ -168,18 +170,8 @@ export default function App() {
 
         <DashboardCards summary={summary} warehouses={warehouses} shownCount={filtered.length} />
 
-        {running && (
-          <div style={{
-            padding: 10,
-            fontSize: 12,
-            color: "#00e5a0"
-          }}>
-            ⚡ Allocating orders...
-          </div>
-        )}
-
         {showLog && (
-          <div className="rounded-lg p-4 overflow-y-auto" style={{ background: "#0d1520", border: "1px solid #e5e7eb", maxHeight: 180 }}>
+          <div className="rounded-lg p-4 overflow-y-auto" style={{ background: "#fff", border: "1px solid #e5e7eb", maxHeight: 180 }}>
             <div style={{ fontSize: 10, letterSpacing: "0.1em", marginBottom: 8, color: "#3a5068" }}>ALLOCATION LOG</div>
             {logs.map((e, i) => (
               <div key={i} style={{ fontSize: 11, color: e.ok ? "#00e5a0" : "#f87171", padding: "1px 0" }}>

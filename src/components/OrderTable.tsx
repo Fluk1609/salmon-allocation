@@ -95,7 +95,12 @@ export default function OrderTable({
           const fillPct = ord.requestQty > 0 ? (ord.allocated / ord.requestQty) * 100 : 0;
           const isFull = ord.allocated >= ord.requestQty;
           const isPart = ord.allocated > 0 && !isFull;
-          const tc = TYPE_CARD[ord.type];
+          const tc = TYPE_CARD[(ord.type || "").toUpperCase()] || {
+            bg: "#f3f4f6",
+            color: "#6b7280",
+            border: "#e5e7eb",
+            dot: "#9ca3af"
+          };
           const cust = customerMap.get(ord.customerId);
           const creditLeft = cust ? (cust.creditLimit - cust.usedCredit) / 1000 : 0;
           const err = errors[ord.subOrderId];
@@ -147,7 +152,7 @@ export default function OrderTable({
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <input
                     type="number" min={0} placeholder={`0–${ord.requestQty}`}
-                    value={inputVals[ord.subOrderId] ?? ""}
+                    value={inputVals[ord.subOrderId] ?? ord.allocated}
                     onChange={e => setInputVals(p => ({ ...p, [ord.subOrderId]: e.target.value }))}
                     onKeyDown={e => e.key === "Enter" && handleSet(ord.subOrderId)}
                     style={{ width: 90, padding: "7px 10px", border: `1.5px solid ${err ? "#ef4444" : "#e2e8f0"}`, borderRadius: 8, fontSize: 13, background: "#f8fafc", color: "#0f172a", outline: "none" }}
@@ -213,7 +218,12 @@ export default function OrderTable({
               const isFull = ord.allocated >= ord.requestQty;
               const isPart = ord.allocated > 0 && !isFull;
               const isZero = ord.allocated === 0;
-              const tb = TYPE_BADGE[ord.type];
+              const tb = TYPE_BADGE[(ord.type || "").toUpperCase()] || {
+                bg: "#f3f4f6",
+                color: "#6b7280",
+                border: "#e5e7eb",
+                dot: "#9ca3af"
+              };
               const cust = customerMap.get(ord.customerId);
               const creditLeft = cust ? (cust.creditLimit - cust.usedCredit) / 1000 : 0;
 
@@ -284,11 +294,11 @@ export default function OrderTable({
                     <div style={{ display: "flex", gap: 4 }}>
                       <input
                         type="number" min={0} max={ord.requestQty}
-                        value={inputVals[ord.subOrderId] ?? ""}
+                        value={inputVals[ord.subOrderId] ?? ord.allocated}
                         placeholder={`0–${ord.requestQty}`}
                         onChange={e => setInputVals(p => ({ ...p, [ord.subOrderId]: e.target.value }))}
                         onKeyDown={e => e.key === "Enter" && handleSet(ord.subOrderId)}
-                        style={{ width: 75, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 7px", color: "white", fontSize: 12 }}
+                        style={{ width: 75, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 7px", color: "#3a5068", fontSize: 12 }}
                       />
                       <button onClick={() => handleSet(ord.subOrderId)}
                         style={{ background: "rgba(0, 229, 160, 0.125)", border: "1px solid #00e5a0", color: "#00e5a0", borderRadius: 5, padding: "4px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>

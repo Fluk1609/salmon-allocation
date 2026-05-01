@@ -18,6 +18,7 @@ export interface Warehouse {
   id: string;
   name: string;
   stock: number;
+  total: number;
 }
 
 export interface Customer {

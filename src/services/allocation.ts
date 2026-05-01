@@ -6,12 +6,7 @@ import type {
   OrderType
 } from "../types";
 
-import {
-  PRICES,
-  WAREHOUSES_INIT,
-  CUSTOMERS_INIT
-} from "../data/mockData";
-
+import { PRICES } from "../data/mockData";
 import { bankersRound } from "../utils/format";
 
 export const TYPE_PRIORITY: Record<OrderType, number> = {
@@ -91,10 +86,15 @@ export function deductStock(
       remaining -= take;
     }
 
-    return warehouses.map(w => ({
-      ...w,
-      stock: w.stock - (deductions.get(w.id) ?? 0)
-    }));
+    return warehouses.map(w => {
+      const used = deductions.get(w.id) ?? 0;
+
+      return {
+        ...w,
+        stock: w.stock - used,
+        total: w.total ?? w.stock + used
+      };
+    });
   }
 
   return warehouses.map(w =>
@@ -111,98 +111,111 @@ export interface AutoAllocResult {
   logs: AllocationLog[];
 }
 
-export function autoAllocate(inputOrders: SubOrder[]): AutoAllocResult {
+export function autoAllocate(
+  inputOrders: SubOrder[],
+  warehouses: Warehouse[],
+  customers: Customer[]
+): AutoAllocResult {
 
+  // reset allocation
   const orders = inputOrders.map(o => ({
     ...o,
     allocated: 0
   }));
-  let whState = WAREHOUSES_INIT.map(w => ({ ...w }));
+
+  // clone state
+  let whState = warehouses.map(w => ({ ...w }));
   const custMap = new Map(
-    CUSTOMERS_INIT.map(c => [c.id, { ...c }])
+    customers.map(c => [c.id, { ...c }])
   );
 
   const logs: AllocationLog[] = [];
+  const allocMap = new Map<string, number>();
 
+  // ======================
+  // SORT (Priority + FIFO)
+  // ======================
   const sorted = [...orders].sort((a, b) => {
     const t = TYPE_PRIORITY[a.type] - TYPE_PRIORITY[b.type];
     if (t !== 0) return t;
 
     return new Date(a.createDate).getTime()
-         - new Date(b.createDate).getTime();
+      - new Date(b.createDate).getTime();
   });
 
-  const allocMap = new Map<string, number>();
+  // ======================
+  // GROUP BY TYPE
+  // ======================
+  const groups: Record<OrderType, SubOrder[]> = {
+    EMERGENCY: [],
+    OVERDUE: [],
+    DAILY: []
+  };
 
-  for (const ord of sorted) {
+  sorted.forEach(o => {
+    groups[o.type].push(o);
+  });
 
-    const cust = custMap.get(ord.customerId);
-    if (!cust) continue;
+  // ======================
+  // FAIR ALLOCATION (สำคัญ)
+  // ======================
+  for (const type of ["EMERGENCY", "OVERDUE", "DAILY"] as OrderType[]) {
 
-    const price = getPrice(ord.itemId, ord.supplierId, ord.type);
+    const group = groups[type];
+    let hasProgress = true;
 
-    const creditLeft = cust.creditLimit - cust.usedCredit;
-    const maxCreditQty =
-      price > 0 ? Math.floor(creditLeft / price) : 0;
+    while (hasProgress) {
+      hasProgress = false;
 
-    const stock = getStock(ord.warehouseId, whState);
+      for (const ord of group) {
 
-    const allocQty = Math.max(
-      0,
-      Math.min(ord.requestQty, stock, maxCreditQty)
-    );
+        const currentAlloc = allocMap.get(ord.subOrderId) ?? 0;
 
-    allocMap.set(ord.subOrderId, allocQty);
+        // ถ้าเต็มแล้ว skip
+        if (currentAlloc >= ord.requestQty) continue;
 
-    if (allocQty > 0) {
+        const cust = custMap.get(ord.customerId);
+        if (!cust) continue;
 
-      whState = deductStock(ord.warehouseId, allocQty, whState);
+        const price = getPrice(ord.itemId, ord.supplierId, ord.type);
 
-      cust.usedCredit = bankersRound(
-        cust.usedCredit + allocQty * price
-      );
+        const creditLeft = cust.creditLimit - cust.usedCredit;
+        const maxCreditQty =
+          price > 0 ? Math.floor(creditLeft / price) : 0;
 
-      logs.push({
-        ok: true,
-        subOrderId: ord.subOrderId,
-        allocatedQty: allocQty,
-        price,
-        type: ord.type
-      });
+        const stock = getStock(ord.warehouseId, whState);
 
-    } else {
+        if (stock <= 0 || maxCreditQty <= 0) continue;
 
-      let reason = "";
+        // 🔥 แบ่งทีละ chunk (fair)
+        const step = Math.min(
+          10,
+          ord.requestQty - currentAlloc,
+          stock,
+          maxCreditQty
+        );
 
-      if (stock === 0) {
-        reason = ord.warehouseId === "WH-000"
-          ? "No stock in all warehouses"
-          : `No stock in ${ord.warehouseId}`;
+        if (step <= 0) continue;
+
+        // update allocation
+        allocMap.set(ord.subOrderId, currentAlloc + step);
+
+        // 🔥 หัก stock จริง
+        whState = deductStock(ord.warehouseId, step, whState);
+
+        // update credit
+        cust.usedCredit = bankersRound(
+          cust.usedCredit + step * price
+        );
+
+        hasProgress = true;
       }
-      else if (maxCreditQty === 0) {
-        reason = "Customer credit limit reached";
-      }
-      else if (stock < ord.requestQty) {
-        reason = `Only ${stock} kg available`;
-      }
-      else if (maxCreditQty < ord.requestQty) {
-        reason = `Credit allows only ${maxCreditQty} kg`;
-      }
-      else {
-        reason = "Allocation blocked by constraints";
-      }
-
-      logs.push({
-        ok: false,
-        subOrderId: ord.subOrderId,
-        allocatedQty: 0,
-        price,
-        type: ord.type,
-        reason
-      });
     }
   }
 
+  // ======================
+  // FINAL RESULT
+  // ======================
   const updatedOrders = orders.map(o => ({
     ...o,
     allocated: allocMap.get(o.subOrderId) ?? 0
